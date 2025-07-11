@@ -26,8 +26,8 @@ local OrionLib = {
 }
 
 local Icons = {
-     ["default"] = "rbxassetid://4384403532"
-    ["key"] = "rbxassetid://7733965118",
+     ["default"] = "rbxassetid://4384403532",
+    ["key"] = "rbxassetid://7733965118"
    
 }
 
