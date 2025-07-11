@@ -32,7 +32,7 @@ local Icons = {
 }
 
 local function GetIcon(IconName)
-    return Icons[IconName] or "rbxassetid://4384403532"
+    return Icons[IconName] or "rbxassetid://7733965118"
 end
 
 local Orion = Instance.new("ScreenGui")
