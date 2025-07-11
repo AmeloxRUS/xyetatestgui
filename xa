@@ -1,4 +1,5 @@
 local OrionLib = {
+    Windows = {},
     Themes = {
         Default = {
             Main = Color3.fromRGB(15, 15, 15),
@@ -8,140 +9,124 @@ local OrionLib = {
             TextDark = Color3.fromRGB(140, 140, 140)
         }
     },
-    Elements = {},
-    Windows = {},
     Flags = {}
 }
 
--- Совместимость со старыми инжекторами
-local function SafeGetService(name)
-    local success, service = pcall(game.GetService, game, name)
-    return success and service or nil
+-- Безопасное создание экземпляров
+local function SafeInstance(className, properties)
+    local instance = Instance.new(className)
+    for prop, value in pairs(properties or {}) do
+        instance[prop] = value
+    end
+    return instance
 end
 
-local TweenService = SafeGetService("TweenService") or {}
-local UserInputService = SafeGetService("UserInputService") or {InputBegan = Instance.new("BindableEvent")}
-local RunService = SafeGetService("RunService") or {RenderStepped = Instance.new("BindableEvent")}
-local Players = SafeGetService("Players")
-local LocalPlayer = Players and Players.LocalPlayer or nil
-local Mouse = LocalPlayer and LocalPlayer:GetMouse() or nil
-
--- Обход проблем с CoreGui
-local CoreGui = SafeGetService("CoreGui") or game:FindFirstChild("CoreGui") or game:GetObjects("rbxassetid://0")[1]
-
+-- Основная функция создания окна
 function OrionLib:MakeWindow(config)
     config = config or {}
     local window = {
         Tabs = {},
-        Minimized = false,
         Name = config.Name or "HelixKey System",
         Size = config.Size or UDim2.new(0, 600, 0, 400),
         Position = config.Position or UDim2.new(0.5, -300, 0.5, -200)
     }
     
-    -- Создание интерфейса
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "Orion"
-    screenGui.Parent = CoreGui
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    -- Создание GUI
+    local screenGui = SafeInstance("ScreenGui", {
+        Name = "HelixKey_"..tostring(math.random(1, 10000)),
+        ResetOnSpawn = false
+    })
     
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = window.Size
-    mainFrame.Position = window.Position
-    mainFrame.BackgroundColor3 = OrionLib.Themes.Default.Main
-    mainFrame.BorderSizePixel = 0
-    mainFrame.ClipsDescendants = true
+    local mainFrame = SafeInstance("Frame", {
+        Size = window.Size,
+        Position = window.Position,
+        BackgroundColor3 = self.Themes.Default.Main,
+        BorderSizePixel = 0
+    })
     mainFrame.Parent = screenGui
     
-    local uiCorner = Instance.new("UICorner")
-    uiCorner.CornerRadius = UDim.new(0, 8)
+    local uiCorner = SafeInstance("UICorner", {
+        CornerRadius = UDim.new(0, 8)
+    })
     uiCorner.Parent = mainFrame
     
     -- Заголовок окна
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 30)
-    titleBar.BackgroundColor3 = OrionLib.Themes.Default.Second
-    titleBar.BorderSizePixel = 0
+    local titleBar = SafeInstance("Frame", {
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = self.Themes.Default.Second,
+        BorderSizePixel = 0
+    })
     titleBar.Parent = mainFrame
     
-    local titleText = Instance.new("TextLabel")
-    titleText.Text = window.Name
-    titleText.TextColor3 = OrionLib.Themes.Default.Text
-    titleText.Font = Enum.Font.GothamBold
-    titleText.TextSize = 14
-    titleText.BackgroundTransparency = 1
-    titleText.Position = UDim2.new(0, 10, 0, 0)
-    titleText.Size = UDim2.new(1, -100, 1, 0)
+    local titleText = SafeInstance("TextLabel", {
+        Text = window.Name,
+        TextColor3 = self.Themes.Default.Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, -100, 1, 0)
+    })
     titleText.Parent = titleBar
     
-    -- Кнопки управления
-    local closeButton = Instance.new("TextButton")
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.new(1, 1, 1)
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -30, 0, 0)
-    closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    closeButton.BorderSizePixel = 0
-    closeButton.ZIndex = 2
+    -- Кнопка закрытия (без сворачивания)
+    local closeButton = SafeInstance("TextButton", {
+        Text = "X",
+        TextColor3 = Color3.new(1, 1, 1),
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -30, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(255, 50, 50),
+        BorderSizePixel = 0
+    })
     closeButton.Parent = titleBar
     
-    local minimizeButton = Instance.new("TextButton")
-    minimizeButton.Text = "_"
-    minimizeButton.TextColor3 = Color3.new(1, 1, 1)
-    minimizeButton.Size = UDim2.new(0, 30, 0, 30)
-    minimizeButton.Position = UDim2.new(1, -60, 0, 0)
-    minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    minimizeButton.BorderSizePixel = 0
-    minimizeButton.ZIndex = 2
-    minimizeButton.Parent = titleBar
-    
     -- Контейнер вкладок
-    local tabContainer = Instance.new("Frame")
-    tabContainer.Size = UDim2.new(1, 0, 1, -30)
-    tabContainer.Position = UDim2.new(0, 0, 0, 30)
-    tabContainer.BackgroundTransparency = 1
+    local tabContainer = SafeInstance("Frame", {
+        Size = UDim2.new(1, 0, 1, -30),
+        Position = UDim2.new(0, 0, 0, 30),
+        BackgroundTransparency = 1
+    })
     tabContainer.Parent = mainFrame
     
-    -- Функционал окна
+    -- Функционал вкладок
     function window:MakeTab(tabConfig)
         tabConfig = tabConfig or {}
         local tab = {
             Name = tabConfig.Name or "Tab",
-            Elements = {}
+            Container = SafeInstance("ScrollingFrame", {
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                ScrollBarThickness = 5,
+                Visible = false
+            })
         }
+        tab.Container.Parent = tabContainer
         
-        -- Создание вкладки
-        local tabFrame = Instance.new("ScrollingFrame")
-        tabFrame.Size = UDim2.new(1, 0, 1, 0)
-        tabFrame.BackgroundTransparency = 1
-        tabFrame.ScrollBarThickness = 5
-        tabFrame.Visible = false
-        tabFrame.Parent = tabContainer
-        
-        local uiListLayout = Instance.new("UIListLayout")
-        uiListLayout.Padding = UDim.new(0, 5)
-        uiListLayout.Parent = tabFrame
+        local uiListLayout = SafeInstance("UIListLayout", {
+            Padding = UDim.new(0, 5)
+        })
+        uiListLayout.Parent = tab.Container
         
         -- Активация вкладки
         function tab:Show()
             for _, otherTab in pairs(window.Tabs) do
-                otherTab.Frame.Visible = false
+                otherTab.Container.Visible = false
             end
-            tabFrame.Visible = true
+            tab.Container.Visible = true
         end
         
-        -- Элементы вкладки
+        -- Простая кнопка
         function tab:AddButton(btnConfig)
-            local button = Instance.new("TextButton")
-            button.Text = btnConfig.Name or "Button"
-            button.Size = UDim2.new(1, -20, 0, 30)
-            button.Position = UDim2.new(0, 10, 0, 0)
-            button.BackgroundColor3 = OrionLib.Themes.Default.Second
-            button.TextColor3 = OrionLib.Themes.Default.Text
-            button.Font = Enum.Font.Gotham
-            button.TextSize = 12
-            button.Parent = tabFrame
+            local button = SafeInstance("TextButton", {
+                Text = btnConfig.Name or "Button",
+                Size = UDim2.new(1, -20, 0, 30),
+                Position = UDim2.new(0, 10, 0, 0),
+                BackgroundColor3 = OrionLib.Themes.Default.Second,
+                TextColor3 = OrionLib.Themes.Default.Text,
+                Font = Enum.Font.Gotham,
+                TextSize = 12
+            })
+            button.Parent = tab.Container
             
             button.MouseButton1Click:Connect(function()
                 if btnConfig.Callback then
@@ -152,26 +137,30 @@ function OrionLib:MakeWindow(config)
             return button
         end
         
+        -- Простой тоггл
         function tab:AddToggle(toggleConfig)
-            local toggleFrame = Instance.new("Frame")
-            toggleFrame.Size = UDim2.new(1, -20, 0, 30)
-            toggleFrame.BackgroundTransparency = 1
-            toggleFrame.Parent = tabFrame
+            local toggleFrame = SafeInstance("Frame", {
+                Size = UDim2.new(1, -20, 0, 30),
+                BackgroundTransparency = 1
+            })
+            toggleFrame.Parent = tab.Container
             
-            local toggleLabel = Instance.new("TextLabel")
-            toggleLabel.Text = toggleConfig.Name or "Toggle"
-            toggleLabel.TextColor3 = OrionLib.Themes.Default.Text
-            toggleLabel.Font = Enum.Font.Gotham
-            toggleLabel.TextSize = 12
-            toggleLabel.BackgroundTransparency = 1
-            toggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+            local toggleLabel = SafeInstance("TextLabel", {
+                Text = toggleConfig.Name or "Toggle",
+                TextColor3 = OrionLib.Themes.Default.Text,
+                Font = Enum.Font.Gotham,
+                TextSize = 12,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(0.7, 0, 1, 0)
+            })
             toggleLabel.Parent = toggleFrame
             
-            local toggleButton = Instance.new("TextButton")
-            toggleButton.Size = UDim2.new(0.2, 0, 0.7, 0)
-            toggleButton.Position = UDim2.new(0.8, 0, 0.15, 0)
-            toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-            toggleButton.Text = ""
+            local toggleButton = SafeInstance("TextButton", {
+                Size = UDim2.new(0.2, 0, 0.7, 0),
+                Position = UDim2.new(0.8, 0, 0.15, 0),
+                BackgroundColor3 = Color3.fromRGB(80, 80, 80),
+                Text = ""
+            })
             toggleButton.Parent = toggleFrame
             
             local toggleState = toggleConfig.Default or false
@@ -203,7 +192,7 @@ function OrionLib:MakeWindow(config)
             }
         end
         
-        -- Добавление вкладки в окно
+        -- Активируем первую вкладку
         if #window.Tabs == 0 then
             tab:Show()
         end
@@ -217,19 +206,9 @@ function OrionLib:MakeWindow(config)
         screenGui:Destroy()
     end)
     
-    minimizeButton.MouseButton1Click:Connect(function()
-        if window.Minimized then
-            mainFrame.Size = window.Size
-            window.Minimized = false
-        else
-            mainFrame.Size = UDim2.new(0, 200, 0, 30)
-            window.Minimized = true
-        end
-    end)
-    
     -- Перетаскивание окна
     local dragging = false
-    local dragInput, dragStart, startPos
+    local dragStart, startPos
     
     titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -245,7 +224,7 @@ function OrionLib:MakeWindow(config)
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
             mainFrame.Position = UDim2.new(
@@ -257,44 +236,52 @@ function OrionLib:MakeWindow(config)
         end
     end)
     
-    table.insert(OrionLib.Windows, window)
+    -- Финализация
+    screenGui.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    table.insert(self.Windows, window)
     return window
 end
 
+-- Функция для уведомлений
 function OrionLib:Notify(title, message, duration)
     duration = duration or 5
     
-    local notification = Instance.new("ScreenGui")
-    notification.Name = "Notification"
-    notification.Parent = CoreGui
+    local notification = SafeInstance("ScreenGui", {
+        Name = "Notification_"..tostring(math.random(1, 10000))
+    })
     
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 80)
-    frame.Position = UDim2.new(1, -320, 1, -100)
-    frame.BackgroundColor3 = OrionLib.Themes.Default.Second
-    frame.BorderSizePixel = 0
+    local frame = SafeInstance("Frame", {
+        Size = UDim2.new(0, 300, 0, 80),
+        Position = UDim2.new(1, -320, 1, -100),
+        BackgroundColor3 = self.Themes.Default.Second,
+        BorderSizePixel = 0
+    })
     frame.Parent = notification
     
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = title
-    titleLabel.TextColor3 = OrionLib.Themes.Default.Text
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 14
-    titleLabel.Size = UDim2.new(1, -20, 0, 30)
-    titleLabel.Position = UDim2.new(0, 10, 0, 5)
-    titleLabel.BackgroundTransparency = 1
+    local titleLabel = SafeInstance("TextLabel", {
+        Text = title,
+        TextColor3 = self.Themes.Default.Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        Size = UDim2.new(1, -20, 0, 30),
+        Position = UDim2.new(0, 10, 0, 5),
+        BackgroundTransparency = 1
+    })
     titleLabel.Parent = frame
     
-    local messageLabel = Instance.new("TextLabel")
-    messageLabel.Text = message
-    messageLabel.TextColor3 = OrionLib.Themes.Default.TextDark
-    messageLabel.Font = Enum.Font.Gotham
-    messageLabel.TextSize = 12
-    messageLabel.Size = UDim2.new(1, -20, 0, 40)
-    messageLabel.Position = UDim2.new(0, 10, 0, 35)
-    messageLabel.TextWrapped = true
-    messageLabel.BackgroundTransparency = 1
+    local messageLabel = SafeInstance("TextLabel", {
+        Text = message,
+        TextColor3 = self.Themes.Default.TextDark,
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+        Size = UDim2.new(1, -20, 0, 40),
+        Position = UDim2.new(0, 10, 0, 35),
+        TextWrapped = true,
+        BackgroundTransparency = 1
+    })
     messageLabel.Parent = frame
+    
+    notification.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     delay(duration, function()
         notification:Destroy()
