@@ -7,7 +7,7 @@ local HttpService = game:GetService("HttpService")
 
 local OrionLib = {
     Elements = {},
-    ThemeObjects = {}, -- Убедимся, что таблица инициализирована
+    ThemeObjects = {},
     Connections = {},
     Flags = {},
     Themes = {
@@ -106,18 +106,18 @@ local function ReturnProperty(Object)
     if Object:IsA("UIStroke") then return "Color" end
     if Object:IsA("TextLabel") or Object:IsA("TextBox") then return "TextColor3" end
     if Object:IsA("ImageLabel") or Object:IsA("ImageButton") then return "ImageColor3" end
-    return "BackgroundColor3" -- Фallback на случай неизвестного типа
+    return "BackgroundColor3"
 end
 
 local function AddThemeObject(Object, Type)
-    if not OrionLib.ThemeObjects then OrionLib.ThemeObjects = {} end -- Проверка инициализации
+    if not OrionLib.ThemeObjects then OrionLib.ThemeObjects = {} end
     if not OrionLib.ThemeObjects[Type] then OrionLib.ThemeObjects[Type] = {} end
     table.insert(OrionLib.ThemeObjects[Type], Object)
     local prop = ReturnProperty(Object)
     if OrionLib.Themes[OrionLib.SelectedTheme] and OrionLib.Themes[OrionLib.SelectedTheme][Type] then
         Object[prop] = OrionLib.Themes[OrionLib.SelectedTheme][Type]
     else
-        Object[prop] = Color3.fromRGB(255, 255, 255) -- Фallback цвет
+        Object[prop] = Color3.fromRGB(255, 255, 255)
     end
     return Object
 end
@@ -350,11 +350,95 @@ function OrionLib:MakeWindow(WindowConfig)
                     AddThemeObject(SetProps(MakeElement("Label", ButtonConfig.Name, 15), {Size = UDim2.new(1, -12, 1, 0), Position = UDim2.new(0, 12, 0, 0), Font = Enum.Font.FredokaOne, Name = "Content"}), "Text"),
                     AddThemeObject(SetProps(MakeElement("Image", GetIcon(ButtonConfig.Icon)), {Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(1, -30, 0, 7)}), "TextDark"),
                     AddThemeObject(MakeElement("Stroke"), "Stroke"),
-                    SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0)})
+                    SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0), Name = "ButtonInteract"})
                 }), "Second")
-                AddConnection(ButtonFrame.MouseButton1Click, function() ButtonConfig.Callback() end)
+                AddConnection(ButtonFrame.ButtonInteract.MouseButton1Click, function()
+                    if not UserInputService:GetFocusedTextBox() then
+                        ButtonConfig.Callback()
+                    end
+                end)
                 return {Set = function(Text) ButtonFrame.Content.Text = Text end}
             end
+
+            function ElementFunction:AddToggle(ToggleConfig)
+                ToggleConfig = ToggleConfig or {Name = "Toggle", Default = false, Callback = function(Value) end, Icon = "default"}
+                local ToggleFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(20, 20, 25), 0, 5), {Size = UDim2.new(1, 0, 0, 33), Parent = ItemParent}), {
+                    AddThemeObject(SetProps(MakeElement("Label", ToggleConfig.Name, 15), {Size = UDim2.new(1, -50, 1, 0), Position = UDim2.new(0, 12, 0, 0), Font = Enum.Font.FredokaOne, Name = "Content"}), "Text"),
+                    AddThemeObject(SetProps(MakeElement("Image", GetIcon(ToggleConfig.Icon)), {Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(1, -70, 0, 7)}), "TextDark"),
+                    AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(40, 40, 40), 0, 5), {Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -40, 0, 7)}), {
+                        MakeElement("Stroke"),
+                        SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0), Name = "ToggleButton"}),
+                        SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(100, 100, 100), 0, 5), {Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(0, 2, 0, 2), Name = "ToggleIndicator"}), {
+                            MakeElement("Stroke")
+                        })
+                    }), "Second")
+                }), "Second")
+                local ToggleState = ToggleConfig.Default
+                local ToggleIndicator = ToggleFrame:FindFirstChild("ToggleButton"):FindFirstChild("ToggleIndicator")
+                if ToggleState then
+                    ToggleIndicator.Position = UDim2.new(0, 22, 0, 2)
+                    ToggleIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                end
+                AddConnection(ToggleFrame.ToggleButton.MouseButton1Click, function()
+                    if not UserInputService:GetFocusedTextBox() then
+                        ToggleState = not ToggleState
+                        TweenService:Create(ToggleIndicator, TweenInfo.new(0.2), {Position = UDim2.new(0, ToggleState and 22 or 2, 0, 2)}):Play()
+                        TweenService:Create(ToggleIndicator, TweenInfo.new(0.2), {BackgroundColor3 = ToggleState and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)}):Play()
+                        ToggleConfig.Callback(ToggleState)
+                    end
+                end)
+                return {Set = function(Value) ToggleState = Value; ToggleIndicator.Position = UDim2.new(0, ToggleState and 22 or 2, 0, 2); ToggleIndicator.BackgroundColor3 = ToggleState and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100); ToggleConfig.Callback(ToggleState) end}
+            end
+
+            function ElementFunction:AddSlider(SliderConfig)
+                SliderConfig = SliderConfig or {Name = "Slider", Min = 0, Max = 100, Default = 50, Callback = function(Value) end, Icon = "default"}
+                local SliderValue = SliderConfig.Default
+                local SliderFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(20, 20, 25), 0, 5), {Size = UDim2.new(1, 0, 0, 50), Parent = ItemParent}), {
+                    AddThemeObject(SetProps(MakeElement("Label", SliderConfig.Name, 15), {Size = UDim2.new(1, -12, 0, 20), Position = UDim2.new(0, 12, 0, 0), Font = Enum.Font.FredokaOne, Name = "Content"}), "Text"),
+                    AddThemeObject(SetProps(MakeElement("Image", GetIcon(SliderConfig.Icon)), {Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(1, -30, 0, 0)}), "TextDark"),
+                    AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(40, 40, 40), 0, 5), {Size = UDim2.new(1, -24, 0, 6), Position = UDim2.new(0, 12, 0, 30)}), {
+                        MakeElement("Stroke"),
+                        SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0), Name = "SliderBar"}),
+                        SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(0, 255, 0), 0, 5), {Size = UDim2.new(0, 0, 1, 0), Name = "Fill"}), {
+                            MakeElement("Stroke")
+                        }),
+                        SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(100, 100, 100), 0, 5), {Size = UDim2.new(0, 10, 0, 10), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Name = "Handle"}), {
+                            MakeElement("Stroke")
+                        })
+                    }), "Second"),
+                    AddThemeObject(SetProps(MakeElement("Label", tostring(SliderValue), 14), {Size = UDim2.new(0, 50, 0, 20), Position = UDim2.new(1, -60, 0, 30), Font = Enum.Font.FredokaOne, Name = "ValueLabel"}), "Text")
+                }), "Second")
+                local SliderBar = SliderFrame:FindFirstChild("SliderBar")
+                local Fill = SliderBar:FindFirstChild("Fill")
+                local Handle = SliderBar:FindFirstChild("Handle")
+                local ValueLabel = SliderFrame:FindFirstChild("ValueLabel")
+                local function UpdateSlider(Input)
+                    local SizeX = math.clamp((Input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+                    SliderValue = math.floor(SliderConfig.Min + (SliderConfig.Max - SliderConfig.Min) * SizeX)
+                    Fill.Size = UDim2.new(SizeX, 0, 1, 0)
+                    Handle.Position = UDim2.new(SizeX, 0, 0.5, 0)
+                    ValueLabel.Text = tostring(SliderValue)
+                    SliderConfig.Callback(SliderValue)
+                end
+                AddConnection(SliderBar.InputBegan, function(Input)
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1 and not UserInputService:GetFocusedTextBox() then
+                        UpdateSlider(Input)
+                        local MoveConnection
+                        MoveConnection = AddConnection(UserInputService.InputChanged, function(Input)
+                            if Input.UserInputType == Enum.UserInputType.MouseMovement then
+                                UpdateSlider(Input)
+                            end
+                        end)
+                        AddConnection(UserInputService.InputEnded, function(Input)
+                            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                MoveConnection:Disconnect()
+                            end
+                        end)
+                    end
+                end)
+                return {Set = function(Value) SliderValue = math.clamp(Value, SliderConfig.Min, SliderConfig.Max); Fill.Size = UDim2.new((SliderValue - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 0, 1, 0); Handle.Position = UDim2.new((SliderValue - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 0, 0.5, 0); ValueLabel.Text = tostring(SliderValue); SliderConfig.Callback(SliderValue) end}
+            end
+
             return ElementFunction
         end
 
