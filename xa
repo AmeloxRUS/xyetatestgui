@@ -7,7 +7,7 @@ local HttpService = game:GetService("HttpService")
 
 local OrionLib = {
     Elements = {},
-    ThemeObjects = {},
+    ThemeObjects = {}, -- Убедимся, что таблица инициализирована
     Connections = {},
     Flags = {},
     Themes = {
@@ -25,9 +25,8 @@ local OrionLib = {
     SaveCfg = false
 }
 
--- Упрощённая работа с иконками (без HTTP, если Xeno не поддерживает)
 local Icons = {
-    ["default"] = "rbxassetid://4384403532" -- Задействуем дефолтную иконку
+    ["default"] = "rbxassetid://4384403532"
 }
 
 local function GetIcon(IconName)
@@ -36,7 +35,7 @@ end
 
 local Orion = Instance.new("ScreenGui")
 Orion.Name = "Orion"
-Orion.Parent = game:GetService("CoreGui") -- Универсальный подход для Xeno
+Orion.Parent = game:GetService("CoreGui")
 
 local function AddConnection(Signal, Function)
     if not Orion.Parent then return end
@@ -100,7 +99,6 @@ end
 local function MakeElement(ElementName, ...) return OrionLib.Elements[ElementName](...) end
 local function SetProps(Element, Props) for Property, Value in next, Props do Element[Property] = Value end return Element end
 local function SetChildren(Element, Children) for _, Child in next, Children do Child.Parent = Element end return Element end
-local function AddThemeObject(Object, Type) if not OrionLib.ThemeObjects[Type] then OrionLib.ThemeObjects[Type] = {} end table.insert(OrionLib.ThemeObjects[Type], Object) Object[ReturnProperty(Object)] = OrionLib.Themes[OrionLib.SelectedTheme][Type] return Object end
 
 local function ReturnProperty(Object)
     if Object:IsA("Frame") or Object:IsA("TextButton") then return "BackgroundColor3" end
@@ -108,11 +106,33 @@ local function ReturnProperty(Object)
     if Object:IsA("UIStroke") then return "Color" end
     if Object:IsA("TextLabel") or Object:IsA("TextBox") then return "TextColor3" end
     if Object:IsA("ImageLabel") or Object:IsA("ImageButton") then return "ImageColor3" end
+    return "BackgroundColor3" -- Фallback на случай неизвестного типа
 end
 
-local function SetTheme() for Name, Type in pairs(OrionLib.ThemeObjects) do for _, Object in pairs(Type) do Object[ReturnProperty(Object)] = OrionLib.Themes[OrionLib.SelectedTheme][Name] end end end
+local function AddThemeObject(Object, Type)
+    if not OrionLib.ThemeObjects then OrionLib.ThemeObjects = {} end -- Проверка инициализации
+    if not OrionLib.ThemeObjects[Type] then OrionLib.ThemeObjects[Type] = {} end
+    table.insert(OrionLib.ThemeObjects[Type], Object)
+    local prop = ReturnProperty(Object)
+    if OrionLib.Themes[OrionLib.SelectedTheme] and OrionLib.Themes[OrionLib.SelectedTheme][Type] then
+        Object[prop] = OrionLib.Themes[OrionLib.SelectedTheme][Type]
+    else
+        Object[prop] = Color3.fromRGB(255, 255, 255) -- Фallback цвет
+    end
+    return Object
+end
 
--- Упрощённые функции конфига (без файловой системы для Xeno)
+local function SetTheme()
+    for Name, Type in pairs(OrionLib.ThemeObjects) do
+        for _, Object in pairs(Type) do
+            local prop = ReturnProperty(Object)
+            if OrionLib.Themes[OrionLib.SelectedTheme] and OrionLib.Themes[OrionLib.SelectedTheme][Name] then
+                Object[prop] = OrionLib.Themes[OrionLib.SelectedTheme][Name]
+            end
+        end
+    end
+end
+
 local function LoadCfg(Config) end
 local function SaveCfg(Name) end
 
@@ -123,7 +143,6 @@ local function CheckKey(Table, Key)
     for _, v in next, Table do if v == Key then return true end end
 end
 
--- Элементы UI
 CreateElement("Corner", function(Scale, Offset) return Create("UICorner", {CornerRadius = UDim.new(Scale or 0, Offset or 10)}) end)
 CreateElement("Stroke", function(Color, Thickness) return Create("UIStroke", {Color = Color or Color3.fromRGB(255, 255, 255), Thickness = Thickness or 1}) end)
 CreateElement("List", function(Scale, Offset) return Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(Scale or 0, Offset or 0)}) end)
